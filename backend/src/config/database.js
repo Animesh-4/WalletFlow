@@ -2,12 +2,14 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Create a new pool instance using the connection string from the .env file.
-// This single string contains all the necessary connection details.
+// Conditionally set SSL options based on the environment
+const sslConfig = process.env.NODE_ENV === 'production' 
+  ? { rejectUnauthorized: false } 
+  : false;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // Use SSL in production for secure connections
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: sslConfig,
 });
 
 // Test the connection
@@ -19,7 +21,6 @@ pool.connect((err, client, release) => {
   client.release();
 });
 
-// Export a query function to interact with the database from your models.
 module.exports = {
   query: (text, params) => pool.query(text, params),
 };
