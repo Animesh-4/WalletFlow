@@ -1,0 +1,28 @@
+{
+  "name": "budget-planner",
+  "version": "1.0.0",
+  "description": "A full-stack budget planner application.",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "server": "nodemon backend/server.js",
+    "client": "npm start --prefix frontend",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "db:migrate": "node-pg-migrate -m database/migrations --no-check-order -d postgresql://postgres:your_password@localhost:5432/budget_planner up",
+    "db:seed": "psql -U postgres -d budget_planner -a -f database/seeds/categories.sql && psql -U postgres -d budget_planner -a -f database/seeds/sample-data.sql"
+  },
+  "keywords": [
+    "react",
+    "nodejs",
+    "express",
+    "postgresql",
+    "socket.io"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.0",
+    "pg-migrate": "^7.3.2"
+  }
+}

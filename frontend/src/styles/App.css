@@ -1,0 +1,32 @@
+/* src/styles/App.css */
+
+/*
+ * Apply a default background color and smooth font rendering to the entire app.
+ * The font-family is set in tailwind.config.js, but this ensures a nice fallback.
+ */
+body {
+  background-color: #f9fafb; /* Equivalent to Tailwind's bg-gray-50 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * Custom scrollbar styling for a more modern look (works in WebKit browsers like Chrome/Safari).
+ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c7c7c7;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
