@@ -1,6 +1,6 @@
 // backend/src/services/notificationService.js
 const Notification = require('../models/Notification');
-// In the future, you would import your socket handler here to send real-time alerts
+const { getIO } = require('../socket/socketManager'); 
 
 const notificationService = {
   /**
@@ -16,8 +16,14 @@ const notificationService = {
     const notification = await Notification.create({ userId, message, linkUrl });
 
     // Step 2 (Future): Emit a real-time event to the user's client
-    // io.to(userId).emit('new_notification', notification);
-
+    try {
+      const io = getIO();
+      const userRoom = `user_${userId}`;
+      io.to(userRoom).emit('new_notification', notification);
+      console.log(`[Notification Service] Emitted 'new_notification' event to room: ${userRoom}`);
+    } catch (error) {
+      console.error('[Notification Service] Failed to emit socket event:', error.message);
+    }
     return notification;
   },
 };

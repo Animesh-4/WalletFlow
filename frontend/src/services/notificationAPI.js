@@ -6,7 +6,7 @@ export const getNotifications = async () => {
     const response = await api.get('/notifications');
     return response.data;
   } catch (error) {
-    throw error.response.data;
+    throw error.response ? error.response.data : error;
   }
 };
 
@@ -15,7 +15,7 @@ export const markAsRead = async (notificationId) => {
         const response = await api.put(`/notifications/${notificationId}/read`);
         return response.data;
     } catch (error) {
-        throw error.response.data;
+        throw error.response ? error.response.data : error;
     }
 };
 
@@ -24,6 +24,6 @@ export const markAllAsRead = async () => {
         const response = await api.put('/notifications/read-all');
         return response.data;
     } catch (error) {
-        throw error.response.data;
+        throw error.response ? error.response.data : error;
     }
 };

@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import * as budgetAPI from '../services/budgetAPI';
 import * as transactionAPI from '../services/transactionAPI';
 import * as collaborationAPI from '../services/collaborationAPI';
+import * as categoryAPI from '../services/categoryAPI';
 
 export const BudgetContext = createContext();
 export const useBudgets = () => useContext(BudgetContext);
@@ -15,8 +16,18 @@ export const BudgetProvider = ({ children }) => {
   const [collaborators, setCollaborators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [categories, setCategories] = useState([]);
 
-  const categories = ['Food', 'Transportation', 'Housing', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Salary', 'Work', 'Other'];
+
+  const fetchCategories = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+        const data = await categoryAPI.getAllCategories();
+        setCategories(data);
+    } catch (err) {
+        console.error("Failed to fetch categories:", err);
+    }
+  }, [isAuthenticated]);
 
   const fetchBudgets = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -48,13 +59,15 @@ export const BudgetProvider = ({ children }) => {
     if (isAuthenticated) {
       fetchBudgets();
       fetchTransactions();
+      fetchCategories();
     } else {
       setBudgets([]);
       setTransactions([]);
+      setCategories([]);
       setCollaborators([]);
       setLoading(false);
     }
-  }, [isAuthenticated, fetchBudgets, fetchTransactions]);
+  }, [isAuthenticated,fetchCategories, fetchBudgets, fetchTransactions]);
 
   // --- Budget Functions ---
   const addBudget = async (budgetData) => {
@@ -116,7 +129,7 @@ export const BudgetProvider = ({ children }) => {
   };
 
   const value = { 
-    budgets, transactions, categories, collaborators, loading, error, 
+    budgets, transactions, categories, collaborators, loading, error,
     fetchBudgets, addBudget, updateBudget, deleteBudget,
     fetchTransactions, addTransaction, updateTransaction, deleteTransaction,
     fetchCollaborators, inviteUser, removeCollaborator, acceptInvitation

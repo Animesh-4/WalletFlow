@@ -3,13 +3,22 @@ const db = require('../config/database');
 
 const Transaction = {
   async create({ budget_id, user_id, type, amount, description, category_id, date }) {
-    const query = `
+    const insertQuery = `
       INSERT INTO transactions (budget_id, user_id, type, amount, description, category_id, date)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *;
+      RETURNING id;
     `;
     const values = [budget_id, user_id, type, amount, description, category_id, date];
-    const { rows } = await db.query(query, values);
+    const { rows: newRows } = await db.query(insertQuery, values);
+    const newTransactionId = newRows[0].id;
+    
+    const selectQuery = `
+      SELECT t.*, c.name as category_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE t.id = $1;
+    `;
+    const { rows } = await db.query(selectQuery, [newTransactionId]);
     return rows[0];
   },
 
@@ -36,11 +45,17 @@ const Transaction = {
     const query = `
       UPDATE transactions
       SET budget_id = $1, type = $2, amount = $3, description = $4, category_id = $5, date = $6, updated_at = NOW()
-      WHERE id = $7 AND status = 'active'
-      RETURNING *;
+      WHERE id = $7 AND status = 'active';
     `;
     const values = [budget_id, type, amount, description, category_id, date, id];
-    const { rows } = await db.query(query, values);
+    await db.query(query, values);
+    const selectQuery = `
+      SELECT t.*, c.name as category_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE t.id = $1;
+    `;
+    const { rows } = await db.query(selectQuery, [id]);
     return rows[0];
   },
 

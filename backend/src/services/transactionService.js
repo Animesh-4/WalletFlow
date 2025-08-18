@@ -2,6 +2,7 @@
 const Transaction = require('../models/Transaction');
 const BudgetHistory = require('../models/BudgetHistory');
 const Category = require('../models/Category');
+const BudgetUser = require('../models/BudgetUser');
 
 const transactionService = {
   async getTransactionsByUserId(userId) {
@@ -15,7 +16,19 @@ const transactionService = {
         throw new Error('Could not find or create category.');
     }
     const dataToSave = { ...restOfData, category_id: categoryRecord.id };
-    return await Transaction.create(dataToSave);
+    const newTransaction = await Transaction.create(dataToSave);
+
+    // If an expense is added to a specific budget, log it in the budget's history.
+    if (newTransaction.type === 'expense' && newTransaction.budget_id) {
+      await BudgetHistory.createLog({
+        budgetId: newTransaction.budget_id,
+        userId: newTransaction.user_id,
+        amount: -Math.abs(Number(newTransaction.amount)), // Log as a negative amount
+        description: newTransaction.description,
+      });
+    }
+    
+    return newTransaction;
   },
 
   async updateTransaction(transactionId, transactionData, userId) {
@@ -40,20 +53,14 @@ const transactionService = {
     return await Transaction.delete(transactionId, userId);
   },
 
-  async createTransaction(transactionData) {
-    const newTransaction = await Transaction.create(transactionData);
-    
-    // If an expense is added to a specific budget, log it in the budget's history.
-    if (newTransaction.type === 'expense' && newTransaction.budget_id) {
-      await BudgetHistory.createLog({
-        budgetId: newTransaction.budget_id,
-        userId: newTransaction.user_id,
-        amount: -Math.abs(Number(newTransaction.amount)), // Log as a negative amount
-        description: newTransaction.description,
-      });
+  async getTransactionsByBudgetId(budgetId, userId) {
+    const hasAccess = await BudgetUser.findUserInBudget(budgetId, userId);
+    if (!hasAccess) {
+        const error = new Error('Forbidden: You do not have access to this budget.');
+        error.statusCode = 403;
+        throw error;
     }
-    
-    return newTransaction;
+    return await Transaction.findByBudgetId(budgetId);
   },
 };
 

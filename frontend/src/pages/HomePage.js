@@ -41,7 +41,7 @@ const HomePage = () => {
 
       {/* Features Section */}
       <section className="container py-20 mx-auto px-4">
-        <h2 className="mb-16 text-4xl font-bold text-center text-gray-800">Why You'll Love BudgetApp</h2>
+        <h2 className="mb-16 text-4xl font-bold text-center text-gray-800">Why You'll Love WalletFlow</h2>
         <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
           <FeatureCard icon={FaChartLine} title="Visualize Spending">
             See where your money goes with intuitive charts and reports. Make informed decisions and reach your financial goals faster.

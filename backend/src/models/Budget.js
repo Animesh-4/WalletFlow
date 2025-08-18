@@ -56,14 +56,26 @@ const Budget = {
     return rows[0];
   },
 
-  async update(budgetId, { name, amount, category, is_recurring, description }, userId) {
-    const query = `
-      UPDATE budgets
-      SET name = $1, amount = $2, category = $3, is_recurring = $4, description = $5, updated_at = NOW()
-      WHERE id = $6 AND user_id = $7
-      RETURNING *;
-    `;
-    const values = [name, amount, category, is_recurring, description, budgetId, userId];
+  async update(budgetId, budgetData) {
+    const fields = [];
+    const values = [];
+    let query = 'UPDATE budgets SET ';
+
+    Object.keys(budgetData).forEach(key => {
+        const validColumns = ['name', 'amount', 'category', 'is_recurring', 'description'];
+        if (validColumns.includes(key)) {
+            fields.push(`${key} = $${values.length + 1}`);
+            values.push(budgetData[key]);
+        }
+    });
+
+    if (fields.length === 0) {
+        throw new Error("No valid fields provided for update.");
+    }
+
+    query += fields.join(', ') + `, updated_at = NOW() WHERE id = $${values.length + 1} RETURNING *;`;
+    values.push(budgetId);
+    
     const { rows } = await db.query(query, values);
     return rows[0];
   },

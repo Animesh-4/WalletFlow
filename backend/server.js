@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const socketConfig = require('./src/config/socket');
 const initializeSocket = require('./src/socket/socketHandler');
+const socketManager = require('./src/socket/socketManager');
 
 require('dotenv').config();
 
@@ -14,6 +15,9 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: socketConfig.cors,
 });
+
+// Initialize the socket manager with the io instance
+socketManager.init(io);
 
 // Initialize all socket event listeners
 initializeSocket(io);

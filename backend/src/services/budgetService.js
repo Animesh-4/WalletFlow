@@ -1,6 +1,7 @@
 // backend/src/services/budgetService.js
 const crypto = require('crypto');
 const Budget = require('../models/Budget');
+const BudgetHistory = require('../models/BudgetHistory');
 const User = require('../models/User');
 const BudgetUser = require('../models/BudgetUser');
 const Invitation = require('../models/Invitation');
@@ -21,11 +22,64 @@ const budgetService = {
   },
 
   async updateBudget(budgetId, budgetData, userId) {
-    const budget = await Budget.findById(budgetId, userId);
-    if (!budget) {
+    console.log(`[Service: budgetService] updateBudget called for budget: ${budgetId} by user: ${userId}`);
+    
+    const userRole = await BudgetUser.findUserInBudget(budgetId, userId);
+    if (!userRole) {
+        const error = new Error('Forbidden: You do not have access to this budget.');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const originalBudget = await Budget.findById(budgetId, userId);
+    if (!originalBudget) {
         return null;
     }
-    return await Budget.update(budgetId, budgetData, userId);
+
+    if (userRole.role === 'owner') {
+        const updatedBudget = await Budget.update(budgetId, budgetData);
+        const amountAdded = Number(updatedBudget.amount) - Number(originalBudget.amount);
+        if (amountAdded > 0) {
+            await BudgetHistory.createLog({
+                budgetId,
+                userId,
+                amount: amountAdded,
+                description: "Wow! 🎉 Budget increased.",
+            });
+        }
+        return updatedBudget;
+
+    } else if (userRole.role === 'editor') {
+        const newAmount = Number(budgetData.amount);
+        const originalAmount = Number(originalBudget.amount);
+
+        const hasInvalidChanges = Object.keys(budgetData).some(key => {
+            if (key === 'amount' || key === 'id' || key === 'user_id' || key === 'created_at' || key === 'updated_at' || key === 'spent' || key === 'role' || key === 'collaborator_count') return false;
+            return String(budgetData[key]) !== String(originalBudget[key]);
+        });
+
+        if (hasInvalidChanges || newAmount <= originalAmount) {
+            const error = new Error('Forbidden: Editors can only increase the total budget amount.');
+            error.statusCode = 403;
+            throw error;
+        }
+
+        const updatedBudget = await Budget.update(budgetId, { amount: newAmount });
+
+        await BudgetHistory.createLog({
+            budgetId,
+            userId,
+            amount: newAmount - originalAmount,
+            description: "Wow! 🎉 Budget increased.",
+        });
+
+        return updatedBudget;
+
+    } else {
+        const error = new Error('Forbidden: Viewers cannot modify the budget.');
+        error.statusCode = 403;
+        throw error;
+    }
   },
 
   async deleteBudget(budgetId, userId) {
@@ -33,14 +87,20 @@ const budgetService = {
   },
 
   async inviteUserToBudget({ budgetId, email, role, inviterId }) {
-    const budget = await Budget.findById(budgetId, inviterId);
-    if (!budget || budget.user_id !== inviterId) {
-      const error = new Error('Forbidden: Only the budget owner can invite users.');
+    console.log(`[Service: budgetService] inviteUserToBudget called by user ${inviterId} to invite ${email} to budget ${budgetId}`);
+    
+    // FIX: The permission check now allows both 'owner' and 'editor' to invite.
+    const inviterRole = await BudgetUser.findUserInBudget(budgetId, inviterId);
+    if (!inviterRole || (inviterRole.role !== 'owner' && inviterRole.role !== 'editor')) {
+      const error = new Error('Forbidden: You do not have permission to invite users to this budget.');
       error.statusCode = 403;
       throw error;
     }
 
+    const budget = await Budget.findById(budgetId, inviterId);
+    const inviter = await User.findById(inviterId);
     const userToInvite = await User.findByEmail(email);
+
     if (!userToInvite) {
       const error = new Error('Not Found: A user with this email address does not exist.');
       error.statusCode = 404;
@@ -53,15 +113,13 @@ const budgetService = {
         throw error;
     }
 
-    // This is the new check to prevent duplicate invitations.
     const existingCollaborator = await BudgetUser.findCollaboratorByEmail(budgetId, email);
     if (existingCollaborator) {
         const error = new Error('This user is already a collaborator on this budget.');
-        error.statusCode = 409; // 409 Conflict
+        error.statusCode = 409;
         throw error;
     }
 
-    const inviter = await User.findById(inviterId);
     const invitationToken = crypto.randomBytes(32).toString('hex');
 
     await Invitation.create({

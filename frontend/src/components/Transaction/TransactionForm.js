@@ -23,8 +23,9 @@ const TransactionForm = ({ transactionToEdit, onFormSubmit, onCancel }) => {
         description: transactionToEdit.description,
         amount: transactionToEdit.amount,
         type: transactionToEdit.type,
-        category: transactionToEdit.category_name,
+        category: transactionToEdit.category_name ,
         date: new Date(transactionToEdit.date).toISOString().split('T')[0],
+        budget_id: transactionToEdit.budget_id ,
       });
     }
   }, [transactionToEdit, isEditing]);

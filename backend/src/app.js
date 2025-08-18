@@ -11,6 +11,7 @@ const userRoutes = require('./routes/user');
 const reportRoutes = require('./routes/report');
 const invitationRoutes = require('./routes/invitation'); // Import the new route
 const notificationRoutes = require('./routes/notification');
+const categoryRoutes = require('./routes/category');
 
 const app = express();
 
@@ -26,7 +27,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/invitations', invitationRoutes); // Mount the new route
 app.use('/api/notifications', notificationRoutes);
-
+app.use('/api/categories', categoryRoutes);
 // --- Error Handling Middleware ---
 app.use(errorHandler);
 

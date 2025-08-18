@@ -18,3 +18,11 @@ router.get('/', notificationController.getNotifications);
 router.put('/:id/read', notificationController.markAsRead);
 
 module.exports = router;
+
+// @route   PUT api/notifications/read-all
+// @desc    Mark all notifications as read
+// @access  Private
+router.put('/read-all', notificationController.markAllAsRead);
+
+
+module.exports = router;
