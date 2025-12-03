@@ -12,7 +12,8 @@ const emailService = {
     // Updated configuration to work with Brevo or any standard SMTP service
     // It defaults to Gmail if SMTP_HOST is not provided.
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com', 
+      host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+      // host: process.env.SMTP_HOST || 'smtp.gmail.com', 
       port: process.env.SMTP_PORT || 587,
       secure: false, // true for 465, false for other ports
       auth: {
