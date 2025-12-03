@@ -8,16 +8,17 @@ const emailService = {
       console.warn('[Email Service] WARN: Email credentials are not set in .env. Email sending is disabled.');
       return null;
     }
+
+    // Updated configuration to work with Brevo or any standard SMTP service
+    // It defaults to Gmail if SMTP_HOST is not provided.
     return nodemailer.createTransport({
-      // service: 'gmail',
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
+      host: process.env.SMTP_HOST || 'smtp.gmail.com', 
+      port: process.env.SMTP_PORT || 587,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      connectionTimeout: 10000,
     });
   },
 
@@ -27,16 +28,17 @@ const emailService = {
       throw new Error('Email service is not configured.');
     }
     try {
-      await transporter.sendMail({
-        from: `"WalletFlow" <${process.env.EMAIL_USER}>`,
+      console.log(`[Email Service] Sending email to: ${to}`);
+      const info = await transporter.sendMail({
+        from: `"WalletFlow" <${process.env.EMAIL_USER}>`, // Sender address
         to,
         subject,
         html,
       });
-      console.log(`[Email Service] SUCCESS: Email sent to ${to}`);
+      console.log('[Email Service] SUCCESS: Email sent. Message ID:', info.messageId);
     } catch (error) {
-      console.error(`[Email Service] ERROR: Failed to send email to ${to}. Reason:`, error);
-      throw error;
+      console.error('[Email Service] ERROR: Failed to send email.', error);
+      throw new Error('Failed to send email.');
     }
   },
 
