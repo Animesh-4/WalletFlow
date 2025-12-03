@@ -5,6 +5,16 @@ require('dotenv').config();
 const emailService = {
   createTransporter() {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+      const port = process.env.SMTP_PORT || 587;
+      const user = process.env.EMAIL_USER || 'NOT_SET';
+      
+      console.log('========================================');
+      console.log('[Email Config Check]');
+      console.log(`Host being used: ${host}`);
+      console.log(`Port being used: ${port}`);
+      console.log(`User: ${user}`);
+      console.log('========================================');
       console.warn('[Email Service] WARN: Email credentials are not set in .env. Email sending is disabled.');
       return null;
     }
@@ -12,8 +22,8 @@ const emailService = {
     // Updated configuration to work with Brevo or any standard SMTP service
     // It defaults to Gmail if SMTP_HOST is not provided.
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-      // host: process.env.SMTP_HOST || 'smtp.gmail.com', 
+      // host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+      host: process.env.SMTP_HOST || 'smtp.gmail.com', 
       port: process.env.SMTP_PORT || 587,
       secure: false, // true for 465, false for other ports
       auth: {
@@ -29,6 +39,7 @@ const emailService = {
       throw new Error('Email service is not configured.');
     }
     try {
+      console.log(`[Email Service] Connecting to ${process.env.SMTP_HOST || 'Gmail'}...`);
       console.log(`[Email Service] Sending email to: ${to}`);
       const info = await transporter.sendMail({
         from: `"WalletFlow" <${process.env.EMAIL_USER}>`, // Sender address
