@@ -4,14 +4,23 @@ const path = require('path');
 const { Pool } = require('pg');
 require('dotenv').config({ path: path.resolve(__dirname, '../backend/.env') });
 
+const sslConfig = process.env.NODE_ENV === 'production' 
+  ? { rejectUnauthorized: false } 
+  : false;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: sslConfig,
+  // Increase connection timeout to 20 seconds (20000 ms)
+  connectionTimeoutMillis: 20000,
+  // Increase idle timeout to 30 seconds
+  idleTimeoutMillis: 30000,
 });
 
 const runMigrations = async () => {
   const client = await pool.connect();
   try {
-    const migrationsDir = path.join(__dirname, 'migrations');
+    const migrationsDir = path.join(__dirname, 'migrations'); 
     const files = fs.readdirSync(migrationsDir).sort();
 
     console.log('Starting database migrations...');
