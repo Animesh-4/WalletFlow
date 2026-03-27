@@ -1,57 +1,64 @@
 // backend/src/models/BudgetUser.js
 const db = require('../config/database');
+const { eq, and } = require('drizzle-orm');
+const { budgetUsers, users } = require('../db/schema');
 
 const BudgetUser = {
   async addUserToBudget(budgetId, userId, role) {
-    const query = `
-      INSERT INTO budget_users (budget_id, user_id, role)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (budget_id, user_id) DO UPDATE SET role = EXCLUDED.role
-      RETURNING *;
-    `;
-    const values = [budgetId, userId, role];
-    const { rows } = await db.query(query, values);
-    return rows[0];
+    const [result] = await db.insert(budgetUsers).values({
+      budget_id: budgetId,
+      user_id: userId,
+      role: role
+    })
+    .onConflictDoUpdate({
+      target: [budgetUsers.budget_id, budgetUsers.user_id],
+      set: { role: role }
+    })
+    .returning();
+    
+    return result;
   },
 
   async removeUserFromBudget(budgetId, userId) {
-    const query = 'DELETE FROM budget_users WHERE budget_id = $1 AND user_id = $2;';
-    const { rowCount } = await db.query(query, [budgetId, userId]);
-    return rowCount;
+    const result = await db.delete(budgetUsers)
+      .where(and(eq(budgetUsers.budget_id, budgetId), eq(budgetUsers.user_id, userId)))
+      .returning({ deletedId: budgetUsers.budget_id });
+      
+    return result.length;
   },
 
   async findUsersByBudgetId(budgetId) {
-    const query = `
-      SELECT u.id, u.username, u.email, u.avatar_url, bu.role
-      FROM users u
-      JOIN budget_users bu ON u.id = bu.user_id
-      WHERE bu.budget_id = $1
-      ORDER BY bu.role, u.username;
-    `;
-    const { rows } = await db.query(query, [budgetId]);
-    return rows;
+    return await db.select({
+      id: users.id,
+      username: users.username,
+      email: users.email,
+      avatar_url: users.avatar_url,
+      role: budgetUsers.role,
+    })
+    .from(users)
+    .innerJoin(budgetUsers, eq(users.id, budgetUsers.user_id))
+    .where(eq(budgetUsers.budget_id, budgetId));
   },
 
   async findUserInBudget(budgetId, userId) {
-    const query = 'SELECT * FROM budget_users WHERE budget_id = $1 AND user_id = $2;';
-    const { rows } = await db.query(query, [budgetId, userId]);
-    return rows[0];
+    const result = await db.select()
+      .from(budgetUsers)
+      .where(and(eq(budgetUsers.budget_id, budgetId), eq(budgetUsers.user_id, userId)));
+    return result[0] || null;
   },
 
-  /**
-   * Finds if a user with a given email is already a collaborator on a budget.
-   * @param {number} budgetId - The ID of the budget.
-   * @param {string} email - The email of the user to check.
-   * @returns {Promise<object|null>} The collaboration record or null if not found.
-   */
   async findCollaboratorByEmail(budgetId, email) {
-    const query = `
-      SELECT bu.* FROM budget_users bu
-      JOIN users u ON bu.user_id = u.id
-      WHERE bu.budget_id = $1 AND u.email = $2;
-    `;
-    const { rows } = await db.query(query, [budgetId, email]);
-    return rows[0];
+    const result = await db.select({
+      budget_id: budgetUsers.budget_id,
+      user_id: budgetUsers.user_id,
+      role: budgetUsers.role,
+      created_at: budgetUsers.created_at
+    })
+    .from(budgetUsers)
+    .innerJoin(users, eq(budgetUsers.user_id, users.id))
+    .where(and(eq(budgetUsers.budget_id, budgetId), eq(users.email, email)));
+
+    return result[0] || null;
   }
 };
 

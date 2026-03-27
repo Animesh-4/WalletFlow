@@ -1,89 +1,110 @@
 // backend/src/models/Budget.js
 const db = require('../config/database');
+const { eq, and, desc, sql } = require('drizzle-orm');
+const { budgets, budgetUsers } = require('../db/schema');
 
 const Budget = {
   async create({ name, amount, category, is_recurring, description, userId }) {
-    const query = `
-      INSERT INTO budgets (user_id, name, amount, category, is_recurring, description)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *;
-    `;
-    const values = [userId, name, amount, category, is_recurring, description];
-    const { rows } = await db.query(query, values);
-    await db.query(
-        'INSERT INTO budget_users (budget_id, user_id, role) VALUES ($1, $2, $3)',
-        [rows[0].id, userId, 'owner']
-    );
-    return rows[0];
+    // Execute sequentially because the neon-http driver does not support interactive transactions
+    const newBudget = await db.insert(budgets).values({
+      user_id: userId,
+      name,
+      amount,
+      category,
+      is_recurring,
+      description,
+    }).returning();
+
+    await db.insert(budgetUsers).values({
+      budget_id: newBudget[0].id,
+      user_id: userId,
+      role: 'owner',
+    });
+
+    return newBudget[0];
   },
 
-  /**
-   * Finds all budgets a user has access to and includes their role for each.
-   * @param {number} userId - The ID of the user.
-   * @returns {Promise<Array<object>>} A list of budgets with a 'role' field.
-   */
   async findByUserId(userId) {
-    const query = `
-      SELECT
-        b.id, b.user_id, b.name, b.amount, b.category, b.is_recurring, b.description, b.created_at,
-        bu.role,
-        (SELECT COUNT(*) FROM budget_users bu2 WHERE bu2.budget_id = b.id) AS collaborator_count,
-        COALESCE(
-          (SELECT SUM(t.amount) FROM transactions t
-           WHERE t.budget_id = b.id AND t.type = 'expense' AND t.status = 'active'
-             AND (b.is_recurring = false OR (
-                  b.is_recurring = true AND 
-                  EXTRACT(MONTH FROM t.date) = EXTRACT(MONTH FROM NOW()) AND
-                  EXTRACT(YEAR FROM t.date) = EXTRACT(YEAR FROM NOW())
-                ))
-          ), 0.00) AS spent
-      FROM budgets b
-      JOIN budget_users bu ON b.id = bu.budget_id
-      WHERE bu.user_id = $1
-      ORDER BY b.created_at DESC;
-    `;
-    const { rows } = await db.query(query, [userId]);
-    return rows;
+    // Using Drizzle's sql helper for complex nested aggregations
+    const result = await db.select({
+      id: budgets.id,
+      user_id: budgets.user_id,
+      name: budgets.name,
+      amount: budgets.amount,
+      category: budgets.category,
+      is_recurring: budgets.is_recurring,
+      description: budgets.description,
+      created_at: budgets.created_at,
+      role: budgetUsers.role,
+      collaborator_count: sql`(SELECT COUNT(*) FROM budget_users bu2 WHERE bu2.budget_id = budgets.id)`.mapWith(Number),
+      spent: sql`COALESCE(
+        (SELECT SUM(t.amount) FROM transactions t
+         WHERE t.budget_id = budgets.id AND t.type = 'expense' AND t.status = 'active'
+           AND (budgets.is_recurring = false OR (
+                budgets.is_recurring = true AND 
+                EXTRACT(MONTH FROM t.date) = EXTRACT(MONTH FROM NOW()) AND
+                EXTRACT(YEAR FROM t.date) = EXTRACT(YEAR FROM NOW())
+              ))
+        ), 0.00)`.mapWith(Number),
+    })
+    .from(budgets)
+    .innerJoin(budgetUsers, eq(budgets.id, budgetUsers.budget_id))
+    .where(eq(budgetUsers.user_id, userId))
+    .orderBy(desc(budgets.created_at));
+
+    return result;
   },
 
   async findById(budgetId, userId) {
-    const query = `
-      SELECT b.*, bu.role FROM budgets b
-      JOIN budget_users bu ON b.id = bu.budget_id
-      WHERE b.id = $1 AND bu.user_id = $2;
-    `;
-    const { rows } = await db.query(query, [budgetId, userId]);
-    return rows[0];
+    const result = await db.select({
+      id: budgets.id,
+      user_id: budgets.user_id,
+      name: budgets.name,
+      amount: budgets.amount,
+      category: budgets.category,
+      is_recurring: budgets.is_recurring,
+      description: budgets.description,
+      created_at: budgets.created_at,
+      role: budgetUsers.role
+    })
+    .from(budgets)
+    .innerJoin(budgetUsers, eq(budgets.id, budgetUsers.budget_id))
+    .where(and(eq(budgets.id, budgetId), eq(budgetUsers.user_id, userId)));
+
+    return result[0] || null;
   },
 
   async update(budgetId, budgetData) {
-    const fields = [];
-    const values = [];
-    let query = 'UPDATE budgets SET ';
-
+    const updateData = {};
+    const validColumns = ['name', 'amount', 'category', 'is_recurring', 'description'];
+    
     Object.keys(budgetData).forEach(key => {
-        const validColumns = ['name', 'amount', 'category', 'is_recurring', 'description'];
         if (validColumns.includes(key)) {
-            fields.push(`${key} = $${values.length + 1}`);
-            values.push(budgetData[key]);
+            updateData[key] = budgetData[key];
         }
     });
 
-    if (fields.length === 0) {
+    if (Object.keys(updateData).length === 0) {
         throw new Error("No valid fields provided for update.");
     }
 
-    query += fields.join(', ') + `, updated_at = NOW() WHERE id = $${values.length + 1} RETURNING *;`;
-    values.push(budgetId);
-    
-    const { rows } = await db.query(query, values);
-    return rows[0];
+    updateData.updated_at = new Date();
+
+    const result = await db.update(budgets)
+      .set(updateData)
+      .where(eq(budgets.id, budgetId))
+      .returning();
+      
+    return result[0];
   },
 
   async delete(budgetId, userId) {
-    const query = 'DELETE FROM budgets WHERE id = $1 AND user_id = $2;';
-    const { rowCount } = await db.query(query, [budgetId, userId]);
-    return rowCount;
+    const result = await db.delete(budgets)
+      .where(and(eq(budgets.id, budgetId), eq(budgets.user_id, userId)))
+      .returning({ deletedId: budgets.id });
+      
+    // Return rowCount equivalent (1 if deleted, 0 if not found)
+    return result.length; 
   },
 };
 

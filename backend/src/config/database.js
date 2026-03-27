@@ -1,26 +1,15 @@
 // backend/src/config/database.js
-const { Pool } = require('pg');
+const { neon } = require('@neondatabase/serverless');
+const { drizzle } = require('drizzle-orm/neon-http');
+const schema = require('../db/schema');
 require('dotenv').config();
 
-// Conditionally set SSL options based on the environment
-const sslConfig = process.env.NODE_ENV === 'production' 
-  ? { rejectUnauthorized: false } 
-  : false;
+// Initialize the Neon HTTP client
+const sql = neon(process.env.DATABASE_URL);
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: sslConfig,
-});
+// Wrap the SQL client with Drizzle
+const db = drizzle(sql, { schema });
 
-// Test the connection
-pool.connect((err, client, release) => {
-  if (err) {
-    return console.error('Error acquiring client', err.stack);
-  }
-  console.log('Successfully connected to the PostgreSQL database!');
-  client.release();
-});
+console.log('Successfully initialized Neon DB with Drizzle ORM!');
 
-module.exports = {
-  query: (text, params) => pool.query(text, params),
-};
+module.exports = db;

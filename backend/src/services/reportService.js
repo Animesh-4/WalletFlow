@@ -1,66 +1,64 @@
 // backend/src/services/reportService.js
 const db = require('../config/database');
+const { eq, and, desc, sql } = require('drizzle-orm');
+const { transactions, categories } = require('../db/schema');
 
 const reportService = {
   async getSpendingSummaryByCategory(userId, month, year) {
-    // IMPORTANT: Only include transactions where the status is 'active'
-    const query = `
-      SELECT 
-        c.name as category_name, 
-        SUM(t.amount) as total_spent
-      FROM transactions t
-      JOIN categories c ON t.category_id = c.id
-      WHERE 
-        t.user_id = $1 AND
-        t.type = 'expense' AND
-        t.status = 'active' AND -- This line is crucial
-        EXTRACT(MONTH FROM t.date) = $2 AND
-        EXTRACT(YEAR FROM t.date) = $3
-      GROUP BY c.name
-      ORDER BY total_spent DESC;
-    `;
-    const values = [userId, month, year];
-    const { rows } = await db.query(query, values);
-    return rows;
+    const result = await db.select({
+      category_name: categories.name,
+      total_spent: sql`SUM(${transactions.amount})`.mapWith(Number),
+    })
+    .from(transactions)
+    .innerJoin(categories, eq(transactions.category_id, categories.id))
+    .where(and(
+      eq(transactions.user_id, userId),
+      eq(transactions.type, 'expense'),
+      eq(transactions.status, 'active'),
+      sql`EXTRACT(MONTH FROM ${transactions.date}) = ${month}`,
+      sql`EXTRACT(YEAR FROM ${transactions.date}) = ${year}`
+    ))
+    .groupBy(categories.name)
+    .orderBy(desc(sql`SUM(${transactions.amount})`));
+
+    return result;
   },
 
   async getMonthlyFinancialReport(userId, month, year) {
-    // IMPORTANT: Only include transactions where the status is 'active'
-    const query = `
-      SELECT
-        COALESCE(SUM(amount) FILTER (WHERE type = 'income' AND status = 'active'), 0.00) AS "totalIncome",
-        COALESCE(SUM(amount) FILTER (WHERE type = 'expense' AND status = 'active'), 0.00) AS "totalExpenses"
-      FROM transactions
-      WHERE
-        user_id = $1 AND
-        EXTRACT(MONTH FROM date) = $2 AND
-        EXTRACT(YEAR FROM date) = $3;
-    `;
-    const values = [userId, month, year];
-    const { rows } = await db.query(query, values);
-    
-    const report = rows[0];
+    // 1. Get the Total Income and Expenses
+    const [totals] = await db.select({
+      totalIncome: sql`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'income' AND ${transactions.status} = 'active'), 0.00)`.mapWith(Number),
+      totalExpenses: sql`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.status} = 'active'), 0.00)`.mapWith(Number),
+    })
+    .from(transactions)
+    .where(and(
+      eq(transactions.user_id, userId),
+      sql`EXTRACT(MONTH FROM ${transactions.date}) = ${month}`,
+      sql`EXTRACT(YEAR FROM ${transactions.date}) = ${year}`
+    ));
+
+    const report = totals || { totalIncome: 0, totalExpenses: 0 };
     report.netSavings = report.totalIncome - report.totalExpenses;
     
-    const topCategoriesQuery = `
-      SELECT 
-        c.name as category_name, 
-        SUM(t.amount) as amount
-      FROM transactions t
-      JOIN categories c ON t.category_id = c.id
-      WHERE 
-        t.user_id = $1 AND
-        t.type = 'expense' AND
-        t.status = 'active' AND -- This line is crucial
-        EXTRACT(MONTH FROM t.date) = $2 AND
-        EXTRACT(YEAR FROM t.date) = $3
-      GROUP BY c.name
-      ORDER BY amount DESC
-      LIMIT 3;
-    `;
-    const topCategoriesResult = await db.query(topCategoriesQuery, values);
+    // 2. Get Top 3 Spending Categories
+    const topCategories = await db.select({
+      category_name: categories.name,
+      amount: sql`SUM(${transactions.amount})`.mapWith(Number),
+    })
+    .from(transactions)
+    .innerJoin(categories, eq(transactions.category_id, categories.id))
+    .where(and(
+      eq(transactions.user_id, userId),
+      eq(transactions.type, 'expense'),
+      eq(transactions.status, 'active'),
+      sql`EXTRACT(MONTH FROM ${transactions.date}) = ${month}`,
+      sql`EXTRACT(YEAR FROM ${transactions.date}) = ${year}`
+    ))
+    .groupBy(categories.name)
+    .orderBy(desc(sql`SUM(${transactions.amount})`))
+    .limit(3);
     
-    report.topCategories = topCategoriesResult.rows;
+    report.topCategories = topCategories;
     report.month = new Date(year, month - 1).toISOString();
 
     return report;

@@ -1,48 +1,31 @@
 // backend/src/models/Category.js
 const db = require('../config/database');
+const { eq, asc } = require('drizzle-orm');
+const { categories } = require('../db/schema');
 
 const Category = {
-  /**
-   * Retrieves all available categories from the database.
-   * @returns {Promise<Array<object>>} A list of all categories.
-   */
   async findAll() {
-    const query = 'SELECT * FROM categories ORDER BY name ASC;';
-    const { rows } = await db.query(query);
-    return rows;
+    return await db.select().from(categories).orderBy(asc(categories.name));
   },
 
-  /**
-   * Finds a category by its name.
-   * @param {string} name - The name of the category.
-   * @returns {Promise<object|null>} The category object or null if not found.
-   */
   async findByName(name) {
-    const query = 'SELECT * FROM categories WHERE name = $1;';
-    const { rows } = await db.query(query, [name]);
-    return rows[0];
+    const result = await db.select().from(categories).where(eq(categories.name, name));
+    return result[0] || null;
   },
 
-  /**
-   * Finds a category by its name, or creates it if it does not exist.
-   * @param {string} name - The name of the category.
-   * @returns {Promise<object>} The category object (either found or newly created).
-   */
   async findOrCreateByName(name) {
-    // First, try to find the category.
     const existingCategory = await this.findByName(name);
     if (existingCategory) {
       return existingCategory;
     }
 
-    // If it doesn't exist, create it.
-    const query = `
-      INSERT INTO categories (name)
-      VALUES ($1)
-      RETURNING *;
-    `;
-    const { rows } = await db.query(query, [name]);
-    return rows[0];
+    // Drizzle allows us to use `.onConflictDoNothing()` or handle it manually.
+    // Since we need the returned object, we'll insert and return.
+    const result = await db.insert(categories)
+      .values({ name })
+      .returning();
+      
+    return result[0];
   }
 };
 

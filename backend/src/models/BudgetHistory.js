@@ -1,38 +1,33 @@
 // backend/src/models/BudgetHistory.js
 const db = require('../config/database');
+const { eq, desc } = require('drizzle-orm');
+const { budgetHistory, users } = require('../db/schema');
 
 const BudgetHistory = {
-  /**
-   * Creates a new log entry for a budget adjustment.
-   * @param {object} logData - The data for the history log.
-   * @returns {Promise<object>} The newly created log entry.
-   */
   async createLog({ budgetId, userId, amount, description }) {
-    const query = `
-      INSERT INTO budget_history (budget_id, user_id, amount, description)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *;
-    `;
-    const values = [budgetId, userId, amount, description];
-    const { rows } = await db.query(query, values);
-    return rows[0];
+    const [result] = await db.insert(budgetHistory).values({
+      budget_id: budgetId,
+      user_id: userId,
+      amount,
+      description
+    }).returning();
+    return result;
   },
 
-  /**
-   * Finds all history logs for a specific budget.
-   * @param {number} budgetId - The ID of the budget.
-   * @returns {Promise<Array<object>>} A list of history logs.
-   */
   async findByBudgetId(budgetId) {
-    const query = `
-      SELECT bh.*, u.username as user_username
-      FROM budget_history bh
-      JOIN users u ON bh.user_id = u.id
-      WHERE bh.budget_id = $1
-      ORDER BY bh.created_at DESC;
-    `;
-    const { rows } = await db.query(query, [budgetId]);
-    return rows;
+    return await db.select({
+      id: budgetHistory.id,
+      budget_id: budgetHistory.budget_id,
+      user_id: budgetHistory.user_id,
+      amount: budgetHistory.amount,
+      description: budgetHistory.description,
+      created_at: budgetHistory.created_at,
+      user_username: users.username
+    })
+    .from(budgetHistory)
+    .innerJoin(users, eq(budgetHistory.user_id, users.id))
+    .where(eq(budgetHistory.budget_id, budgetId))
+    .orderBy(desc(budgetHistory.created_at));
   },
 };
 
