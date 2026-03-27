@@ -105,10 +105,10 @@ export const BudgetProvider = ({ children }) => {
   };
   
   // --- Collaboration Functions ---
-  const fetchCollaborators = async (budgetId) => {
+  const fetchCollaborators = useCallback(async (budgetId) => {
     const data = await collaborationAPI.getCollaborators(budgetId);
     setCollaborators(data);
-  };
+  }, []);
 
   const inviteUser = async (budgetId, email, role) => {
     await collaborationAPI.inviteUser(budgetId, { email, role });
