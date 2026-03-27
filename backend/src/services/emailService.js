@@ -9,15 +9,12 @@ const emailService = {
       return null;
     }
     return nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      host: 'smtp-relay.brevo.com',
+      port: 2525, 
+      secure: false, // MUST be false for port 2525 (it auto-upgrades to secure via STARTTLS)
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false
       }
     });
   },
@@ -29,7 +26,7 @@ const emailService = {
     }
     try {
       await transporter.sendMail({
-        from: `"WalletFlow" <${process.env.EMAIL_USER}>`,
+        from: `"WalletFlow" <${process.env.EMAIL}>`,
         to,
         subject,
         html,
