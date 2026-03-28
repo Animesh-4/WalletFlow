@@ -17,14 +17,20 @@ const invitationService = {
 
     // Step 2: Perform validation checks.
     if (!invitation) {
-      const error = new Error('Not Found: This invitation does not exist.');
+      const error = new Error('This invitation does not exist.');
       error.statusCode = 404;
       throw error;
     }
 
     const user = await User.findById(userId);
-    if (user.email !== invitation.invitee_email) {
-      const error = new Error('Forbidden: This invitation is for a different user.');
+    if (!user) {
+      const error = new Error('Authenticated user was not found.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (user.email.toLowerCase() !== invitation.invitee_email.toLowerCase()) {
+      const error = new Error('This invitation was sent to a different email address.');
       error.statusCode = 403;
       throw error;
     }
@@ -37,9 +43,9 @@ const invitationService = {
 
     // Check if the invitation is still pending and not expired.
     if (invitation.status !== 'pending' || new Date(invitation.expires_at) < new Date()) {
-        const error = new Error('Not Found: This invitation is invalid or has expired.');
-        error.statusCode = 404;
-        throw error;
+      const error = new Error('This invitation is invalid or has expired.');
+      error.statusCode = 404;
+      throw error;
     }
 
     // Step 4: If all checks pass, process the invitation.

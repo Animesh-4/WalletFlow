@@ -12,6 +12,7 @@ const emailService = {
       host: 'smtp-relay.brevo.com',
       port: 2525, 
       secure: false, // MUST be false for port 2525 (it auto-upgrades to secure via STARTTLS)
+      // service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,

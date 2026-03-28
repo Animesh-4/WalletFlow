@@ -5,6 +5,7 @@ import { useBudgets } from '../hooks/useBudgets';
 import Button from '../components/Shared/Button';
 import { useAuth } from '../hooks/useAuth';
 import { FaCheckCircle, FaExclamationCircle, FaSignInAlt } from 'react-icons/fa';
+import { LOCAL_STORAGE_PENDING_INVITATION_KEY } from '../utils/constants';
 
 const AcceptInvitationPage = () => {
   const { acceptInvitation } = useBudgets();
@@ -19,13 +20,13 @@ const AcceptInvitationPage = () => {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!isAuthenticated) {
-      setStatus('requiresLogin');
-      return;
-    }
     if (!token) {
       setError('No invitation token was found in the URL.');
       setStatus('error');
+      return;
+    }
+    if (!isAuthenticated) {
+      setStatus('requiresLogin');
       return;
     }
     const processInvitation = async () => {
@@ -67,7 +68,10 @@ const AcceptInvitationPage = () => {
             <div className="flex flex-col items-center">
                 <FaSignInAlt className="text-gray-400 text-5xl mb-4" />
                 <p className="text-gray-800 mb-4">Please log in to accept this invitation.</p>
-                <Button onClick={() => navigate(`/login?redirect=${location.pathname}${location.search}`)}>
+                <Button onClick={() => {
+                  localStorage.setItem(LOCAL_STORAGE_PENDING_INVITATION_KEY, token);
+                  navigate('/register');
+                }}>
                     Proceed to Login
                 </Button>
             </div>

@@ -2,6 +2,7 @@
 
 // Local storage keys
 export const LOCAL_STORAGE_TOKEN_KEY = 'budget-app-token';
+export const LOCAL_STORAGE_PENDING_INVITATION_KEY = 'pending_invitation_token';
 
 // Default messages
 export const GENERIC_ERROR_MESSAGE = 'An unexpected error occurred. Please try again later.';

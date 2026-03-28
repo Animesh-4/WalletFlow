@@ -97,27 +97,30 @@ const budgetService = {
       throw error;
     }
 
-    const budget = await Budget.findById(budgetId, inviterId);
-    const inviter = await User.findById(inviterId);
-    const userToInvite = await User.findByEmail(email);
-
-    if (!userToInvite) {
-      const error = new Error('Not Found: A user with this email address does not exist.');
-      error.statusCode = 404;
+    const inviteeEmail = (email || '').trim().toLowerCase();
+    if (!inviteeEmail) {
+      const error = new Error('A valid email address is required.');
+      error.statusCode = 400;
       throw error;
     }
-    
-    if (userToInvite.id === inviterId) {
-        const error = new Error('Bad Request: You cannot invite yourself to your own budget.');
-        error.statusCode = 400;
-        throw error;
+
+    const budget = await Budget.findById(budgetId, inviterId);
+    const inviter = await User.findById(inviterId);
+    const userToInvite = await User.findByEmail(inviteeEmail);
+
+    if (userToInvite && userToInvite.id === inviterId) {
+      const error = new Error('Bad Request: You cannot invite yourself to your own budget.');
+      error.statusCode = 400;
+      throw error;
     }
 
-    const existingCollaborator = await BudgetUser.findCollaboratorByEmail(budgetId, email);
-    if (existingCollaborator) {
+    if (userToInvite) {
+      const existingCollaborator = await BudgetUser.findCollaboratorByEmail(budgetId, inviteeEmail);
+      if (existingCollaborator) {
         const error = new Error('This user is already a collaborator on this budget.');
         error.statusCode = 409;
         throw error;
+      }
     }
 
     const invitationToken = crypto.randomBytes(32).toString('hex');
@@ -125,13 +128,20 @@ const budgetService = {
     await Invitation.create({
       budgetId,
       inviterId,
-      inviteeEmail: email,
+      inviteeEmail,
       role,
       token: invitationToken,
     });
 
-    await emailService.sendBudgetInvitationEmail(email, inviter.username, budget.name, invitationToken);
-    await notificationService.createNotification(userToInvite.id, `${inviter.username} has invited you to collaborate on the budget "${budget.name}".`, `/accept-invitation?token=${invitationToken}`);
+    await emailService.sendBudgetInvitationEmail(inviteeEmail, inviter.username, budget.name, invitationToken);
+
+    if (userToInvite) {
+      await notificationService.createNotification(
+        userToInvite.id,
+        `${inviter.username} has invited you to collaborate on the budget "${budget.name}".`,
+        `/accept-invitation?token=${invitationToken}`
+      );
+    }
 
     return { message: 'Invitation has been sent successfully.' };
   },

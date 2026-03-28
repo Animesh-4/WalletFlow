@@ -1,14 +1,16 @@
 // src/components/Auth/Login.js
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { HiOutlineBanknotes } from "react-icons/hi2";
+import { LOCAL_STORAGE_PENDING_INVITATION_KEY } from '../../utils/constants';
 
 const Login = () => {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
 
@@ -27,6 +29,21 @@ const Login = () => {
     setError(null);
     try {
       await login(email, password);
+
+      const pendingToken = localStorage.getItem(LOCAL_STORAGE_PENDING_INVITATION_KEY);
+      const redirectParam = new URLSearchParams(location.search).get('redirect');
+
+      if (pendingToken) {
+        localStorage.removeItem(LOCAL_STORAGE_PENDING_INVITATION_KEY);
+        navigate(`/accept-invitation?token=${encodeURIComponent(pendingToken)}`);
+        return;
+      }
+
+      if (redirectParam && redirectParam.startsWith('/')) {
+        navigate(redirectParam);
+        return;
+      }
+
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.');

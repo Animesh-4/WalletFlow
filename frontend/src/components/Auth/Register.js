@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { HiOutlineBanknotes } from "react-icons/hi2";
+import { LOCAL_STORAGE_PENDING_INVITATION_KEY } from '../../utils/constants';
 
 const Register = () => {
   const { register, loading } = useAuth();
@@ -33,6 +34,14 @@ const Register = () => {
     }
     try {
       await register({ username, email, password });
+
+      const pendingToken = localStorage.getItem(LOCAL_STORAGE_PENDING_INVITATION_KEY);
+      if (pendingToken) {
+        const redirect = encodeURIComponent(`/accept-invitation?token=${pendingToken}`);
+        navigate(`/login?registered=true&redirect=${redirect}`);
+        return;
+      }
+
       navigate('/login?registered=true');
     } catch (err) {
       setError(err.message || 'Failed to register. Please try again.');
