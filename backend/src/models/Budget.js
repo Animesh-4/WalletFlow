@@ -1,31 +1,49 @@
 // backend/src/models/Budget.js
 const db = require('../config/database');
 const { eq, and, desc, sql } = require('drizzle-orm');
-const { budgets, budgetUsers } = require('../db/schema');
+const { budgets, budgetUsers, transactions } = require('../db/schema');
 
 const Budget = {
   async create({ name, amount, category, is_recurring, description, userId }) {
-    // Execute sequentially because the neon-http driver does not support interactive transactions
-    const newBudget = await db.insert(budgets).values({
-      user_id: userId,
-      name,
-      amount,
-      category,
-      is_recurring,
-      description,
-    }).returning();
+    return await db.transaction(async (tx) => {
+      const newBudget = await tx.insert(budgets).values({
+        user_id: userId,
+        name,
+        amount,
+        category,
+        is_recurring,
+        description,
+      }).returning();
 
-    await db.insert(budgetUsers).values({
-      budget_id: newBudget[0].id,
-      user_id: userId,
-      role: 'owner',
+      await tx.insert(budgetUsers).values({
+        budget_id: newBudget[0].id,
+        user_id: userId,
+        role: 'owner',
+      });
+
+      return newBudget[0];
     });
-
-    return newBudget[0];
   },
 
   async findByUserId(userId) {
-    // Using Drizzle's sql helper for complex nested aggregations
+    const t_stats = db.select({
+      budget_id: transactions.budget_id,
+      total_spent: sql`SUM(amount)`.as('total_spent'),
+      current_month_spent: sql`SUM(CASE WHEN EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM NOW()) THEN amount ELSE 0 END)`.as('current_month_spent'),
+    })
+    .from(transactions)
+    .where(and(eq(transactions.type, 'expense'), eq(transactions.status, 'active')))
+    .groupBy(transactions.budget_id)
+    .as('t_stats');
+
+    const c_stats = db.select({
+      budget_id: budgetUsers.budget_id,
+      count: sql`count(*)`.as('count'),
+    })
+    .from(budgetUsers)
+    .groupBy(budgetUsers.budget_id)
+    .as('c_stats');
+
     const result = await db.select({
       id: budgets.id,
       user_id: budgets.user_id,
@@ -36,19 +54,17 @@ const Budget = {
       description: budgets.description,
       created_at: budgets.created_at,
       role: budgetUsers.role,
-      collaborator_count: sql`(SELECT COUNT(*) FROM budget_users bu2 WHERE bu2.budget_id = budgets.id)`.mapWith(Number),
+      collaborator_count: sql`COALESCE(${c_stats.count}, 0)`.mapWith(Number),
       spent: sql`COALESCE(
-        (SELECT SUM(t.amount) FROM transactions t
-         WHERE t.budget_id = budgets.id AND t.type = 'expense' AND t.status = 'active'
-           AND (budgets.is_recurring = false OR (
-                budgets.is_recurring = true AND 
-                EXTRACT(MONTH FROM t.date) = EXTRACT(MONTH FROM NOW()) AND
-                EXTRACT(YEAR FROM t.date) = EXTRACT(YEAR FROM NOW())
-              ))
-        ), 0.00)`.mapWith(Number),
+        CASE 
+          WHEN ${budgets.is_recurring} = true THEN ${t_stats.current_month_spent}
+          ELSE ${t_stats.total_spent}
+        END, 0.00)`.mapWith(Number),
     })
     .from(budgets)
     .innerJoin(budgetUsers, eq(budgets.id, budgetUsers.budget_id))
+    .leftJoin(t_stats, eq(budgets.id, t_stats.budget_id))
+    .leftJoin(c_stats, eq(budgets.id, c_stats.budget_id))
     .where(eq(budgetUsers.user_id, userId))
     .orderBy(desc(budgets.created_at));
 
@@ -77,7 +93,7 @@ const Budget = {
   async update(budgetId, budgetData) {
     const updateData = {};
     const validColumns = ['name', 'amount', 'category', 'is_recurring', 'description'];
-    
+
     Object.keys(budgetData).forEach(key => {
         if (validColumns.includes(key)) {
             updateData[key] = budgetData[key];
@@ -94,17 +110,17 @@ const Budget = {
       .set(updateData)
       .where(eq(budgets.id, budgetId))
       .returning();
-      
+
     return result[0];
   },
 
-  async delete(budgetId, userId) {
+  async delete(budgetId) {
     const result = await db.delete(budgets)
-      .where(and(eq(budgets.id, budgetId), eq(budgets.user_id, userId)))
+      .where(eq(budgets.id, budgetId))
       .returning({ deletedId: budgets.id });
-      
+
     // Return rowCount equivalent (1 if deleted, 0 if not found)
-    return result.length; 
+    return result.length;
   },
 };
 
