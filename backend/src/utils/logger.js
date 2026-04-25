@@ -1,36 +1,43 @@
 // backend/src/utils/logger.js
 
+const config = require('../config/env');
+
 /**
- * A simple logger utility.
- * It adds timestamps and log levels to console output.
+ * A structured logger utility.
+ * In production, it logs in JSON format for easier parsing by log management tools.
+ * In development, it logs in a human-readable format.
  */
 const logger = {
-  /**
-   * Logs an informational message.
-   * @param {string} message - The message to log.
-   * @param {*} [data] - Optional data to include with the log.
-   */
   info: (message, data) => {
-    console.log(`[INFO] [${new Date().toISOString()}] ${message}`, data || '');
+    if (config.isProduction) {
+      console.log(JSON.stringify({ level: 'INFO', timestamp: new Date().toISOString(), message, data }));
+    } else {
+      console.log(`[INFO] [${new Date().toISOString()}] ${message}`, data || '');
+    }
   },
 
-  /**
-   * Logs a warning message.
-   * @param {string} message - The message to log.
-   * @param {*} [data] - Optional data to include with the log.
-   */
   warn: (message, data) => {
-    console.warn(`[WARN] [${new Date().toISOString()}] ${message}`, data || '');
+    if (config.isProduction) {
+      console.warn(JSON.stringify({ level: 'WARN', timestamp: new Date().toISOString(), message, data }));
+    } else {
+      console.warn(`[WARN] [${new Date().toISOString()}] ${message}`, data || '');
+    }
   },
 
-  /**
-   * Logs an error message.
-   * @param {string} message - The message to log.
-   * @param {Error|*} [error] - The error object or other data.
-   */
   error: (message, error) => {
-    console.error(`[ERROR] [${new Date().toISOString()}] ${message}`, error || '');
+    const errorData = error instanceof Error ? { message: error.message, stack: error.stack } : error;
+    if (config.isProduction) {
+      console.error(JSON.stringify({ level: 'ERROR', timestamp: new Date().toISOString(), message, error: errorData }));
+    } else {
+      console.error(`[ERROR] [${new Date().toISOString()}] ${message}`, error || '');
+    }
   },
+
+  debug: (message, data) => {
+    if (!config.isProduction) {
+      console.log(`[DEBUG] [${new Date().toISOString()}] ${message}`, data || '');
+    }
+  }
 };
 
 module.exports = logger;
