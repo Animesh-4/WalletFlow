@@ -2,4 +2,5 @@
 User-agent: *
 Allow: /
 
+# Explicitly point Google to your sitemap
 Sitemap: https://walletflow-jlks.onrender.com/sitemap.xml
