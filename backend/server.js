@@ -12,6 +12,7 @@ const socketConfig = require('./src/config/socket');
 const initializeSocket = require('./src/socket/socketHandler');
 const socketManager = require('./src/socket/socketManager');
 const logger = require('./src/utils/logger');
+const { startKeepAlive } = require('./src/utils/helpers');
 
 // Create an HTTP server from the Express app
 const server = http.createServer(app);
@@ -46,6 +47,11 @@ const PORT = config.PORT;
 server.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
   logger.info(`Socket.IO server is ready and listening for connections.`);
+
+  // Start keep-alive mechanism in production to prevent sleeping (e.g., on Render)
+  if (config.isProduction) {
+    startKeepAlive(config.BACKEND_URL);
+  }
 });
 
 // Optional: Graceful shutdown logic

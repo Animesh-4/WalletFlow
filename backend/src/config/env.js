@@ -75,6 +75,7 @@ const config = {
 
   // Server
   PORT: parseInt(process.env.PORT || 5000, 10),
+  BACKEND_URL: process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`,
 
   // Database
   DATABASE_URL: process.env.DATABASE_URL,
