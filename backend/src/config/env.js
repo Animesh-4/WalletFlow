@@ -81,7 +81,8 @@ const config = {
   DATABASE_URL: process.env.DATABASE_URL,
 
   // Redis (Optional, for Socket.IO scaling)
-  REDIS_URL: process.env.REDIS_URL || null,
+  // We check for 'null' string because some platforms pass it when the variable is undefined
+  REDIS_URL: (process.env.REDIS_URL && process.env.REDIS_URL !== 'null') ? process.env.REDIS_URL : null,
 
   // Frontend (CORS & redirects)
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
