@@ -1,11 +1,15 @@
 // backend/src/services/emailService.js
 const nodemailer = require('nodemailer');
-require('dotenv').config();
+const config = require('../config/env');
 
 const emailService = {
   createTransporter() {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn('[Email Service] WARN: Email credentials are not set in .env. Email sending is disabled.');
+    if (!config.EMAIL_USER || !config.EMAIL_PASS) {
+      if (config.isDevelopment) {
+        console.warn('[Email Service] ℹ️  Email credentials not set. Emails will be logged to console in development mode.');
+      } else {
+        console.warn('[Email Service] ⚠️  Email is disabled: credentials not set in production.');
+      }
       return null;
     }
     return nodemailer.createTransport({
@@ -14,8 +18,8 @@ const emailService = {
       secure: false, // MUST be false for port 2525 (it auto-upgrades to secure via STARTTLS)
       // service: 'gmail',
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+        user: config.EMAIL_USER,
+        pass: config.EMAIL_PASS,
       }
     });
   },
@@ -23,11 +27,24 @@ const emailService = {
   async sendEmail({ to, subject, html }) {
     const transporter = this.createTransporter();
     if (!transporter) {
-      throw new Error('Email service is not configured.');
+      // In development, log the email to console instead of throwing
+      if (config.isDevelopment) {
+        console.log(`
+[Email Service - DEVELOPMENT MODE]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📧 TO: ${to}
+📋 SUBJECT: ${subject}
+📝 BODY:
+${html}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        `);
+        return;
+      }
+      throw new Error('Email service is not configured in production.');
     }
     try {
       await transporter.sendMail({
-        from: `"WalletFlow" <${process.env.EMAIL}>`,
+        from: `"WalletFlow" <${config.EMAIL}>`,
         to,
         subject,
         html,
@@ -89,7 +106,7 @@ const emailService = {
   },
 
   async sendPasswordResetEmail(userEmail, resetToken) {
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    const resetUrl = `${config.FRONTEND_URL}/reset-password?token=${resetToken}`;
     const html = this.createStyledEmailTemplate({
         title: 'Password Reset Request',
         body: 'You requested a password reset for your WalletFlow account. Please click the button below to set a new password. If you did not request this, please ignore this email.',
@@ -102,7 +119,7 @@ const emailService = {
   },
 
   async sendBudgetInvitationEmail(inviteeEmail, inviterName, budgetName, invitationToken) {
-    const acceptUrl = `${process.env.FRONTEND_URL}/accept-invitation?token=${invitationToken}`;
+    const acceptUrl = `${config.FRONTEND_URL}/accept-invitation?token=${invitationToken}`;
     const html = this.createStyledEmailTemplate({
         title: "You've Been Invited!",
         body: `<strong>${inviterName}</strong> has invited you to collaborate on the budget: <strong>"${budgetName}"</strong>. Click the button below to accept the invitation and join the budget.`,

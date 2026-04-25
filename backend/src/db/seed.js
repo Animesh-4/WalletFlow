@@ -2,13 +2,31 @@
 const { neon } = require('@neondatabase/serverless');
 const { drizzle } = require('drizzle-orm/neon-http');
 const { categories } = require('./schema');
-require('dotenv').config();
+const config = require('../config/env');
 
-// Initialize the database connection
-const sql = neon(process.env.DATABASE_URL);
+// Initialize the database connection using validated config
+const sql = neon(config.DATABASE_URL);
 const db = drizzle(sql);
 
 async function seed() {
+  // Production safety check: prevent accidental seeding in production
+  if (config.isProduction) {
+    console.warn('\n⚠️  PRODUCTION ENVIRONMENT DETECTED');
+    console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.warn('Seeding production database is potentially dangerous.');
+    console.warn('It may reset existing data.');
+    console.warn('');
+    console.warn('To seed production, run:');
+    console.warn('  FORCE_SEED_PRODUCTION=true npm run db:seed');
+    console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    
+    if (process.env.FORCE_SEED_PRODUCTION !== 'true') {
+      console.log('Aborting seed. Use FORCE_SEED_PRODUCTION=true to override.');
+      process.exit(1);
+    }
+    console.log('⚠️  Proceeding with production seed (explicitly enabled)\n');
+  }
+
   console.log('🌱 Starting database seeding...');
 
   try {
