@@ -7,6 +7,7 @@ const BudgetUser = require('../models/BudgetUser');
 const Invitation = require('../models/Invitation');
 const emailService = require('./emailService');
 const notificationService = require('./notificationService');
+const logger = require('../utils/logger');
 
 const budgetService = {
   async getBudgetsByUserId(userId) {
@@ -22,7 +23,7 @@ const budgetService = {
   },
 
   async updateBudget(budgetId, budgetData, userId) {
-    console.log(`[Service: budgetService] updateBudget called for budget: ${budgetId} by user: ${userId}`);
+    logger.info('updateBudget called', { budgetId, userId });
     
     const userRole = await BudgetUser.findUserInBudget(budgetId, userId);
     if (!userRole) {
@@ -83,11 +84,17 @@ const budgetService = {
   },
 
   async deleteBudget(budgetId, userId) {
-    return await Budget.delete(budgetId, userId);
+    const userRole = await BudgetUser.findUserInBudget(budgetId, userId);
+    if (!userRole || userRole.role !== 'owner') {
+      const error = new Error('Forbidden: Only a budget owner can delete this budget.');
+      error.statusCode = 403;
+      throw error;
+    }
+    return await Budget.delete(budgetId);
   },
 
   async inviteUserToBudget({ budgetId, email, role, inviterId }) {
-    console.log(`[Service: budgetService] inviteUserToBudget called by user ${inviterId} to invite ${email} to budget ${budgetId}`);
+    logger.info('inviteUserToBudget called', { budgetId, email, role, inviterId });
     
     // FIX: The permission check now allows both 'owner' and 'editor' to invite.
     const inviterRole = await BudgetUser.findUserInBudget(budgetId, inviterId);
@@ -158,7 +165,7 @@ const budgetService = {
 
   async removeUserFromBudget({ budgetId, userIdToRemove, removerId }) {
     const budget = await Budget.findById(budgetId, removerId);
-    if (!budget || budget.user_id !== removerId) {
+    if (!budget || budget.role !== 'owner') {
       const error = new Error('Forbidden: Only the budget owner can remove users.');
       error.statusCode = 403;
       throw error;
