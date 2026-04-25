@@ -69,40 +69,39 @@ export const BudgetProvider = ({ children }) => {
     }
   }, [isAuthenticated,fetchCategories, fetchBudgets, fetchTransactions]);
 
-  // --- Budget Functions ---
-  const addBudget = async (budgetData) => {
+  const addBudget = useCallback(async (budgetData) => {
     const newBudget = await budgetAPI.createBudget(budgetData);
     setBudgets(prev => [...prev, newBudget]);
-  };
+  }, []);
   
-  const updateBudget = async (id, budgetData) => {
+  const updateBudget = useCallback(async (id, budgetData) => {
     const updatedBudget = await budgetAPI.updateBudget(id, budgetData);
     setBudgets(prev => prev.map(b => (b.id === id ? updatedBudget : b)));
-  };
+  }, []);
 
-  const deleteBudget = async (id) => {
+  const deleteBudget = useCallback(async (id) => {
     await budgetAPI.deleteBudget(id);
     setBudgets(prev => prev.filter(b => b.id !== id));
-  };
+  }, []);
 
   // --- Transaction Functions ---
-  const addTransaction = async (transactionData) => {
+  const addTransaction = useCallback(async (transactionData) => {
     const newTransaction = await transactionAPI.createTransaction(transactionData);
     setTransactions(prev => [newTransaction, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)));
     fetchBudgets(); // Refresh budgets to update spending totals
-  };
+  }, [fetchBudgets]);
   
-  const updateTransaction = async (id, transactionData) => {
+  const updateTransaction = useCallback(async (id, transactionData) => {
     const updatedTransaction = await transactionAPI.updateTransaction(id, transactionData);
     setTransactions(prev => prev.map(t => (t.id === id ? updatedTransaction : t)));
     fetchBudgets();
-  };
+  }, [fetchBudgets]);
 
-  const deleteTransaction = async (id) => {
+  const deleteTransaction = useCallback(async (id) => {
     await transactionAPI.deleteTransaction(id);
     setTransactions(prev => prev.filter(t => t.id !== id));
     fetchBudgets();
-  };
+  }, [fetchBudgets]);
   
   // --- Collaboration Functions ---
   const fetchCollaborators = useCallback(async (budgetId) => {
@@ -110,30 +109,35 @@ export const BudgetProvider = ({ children }) => {
     setCollaborators(data);
   }, []);
 
-  const inviteUser = async (budgetId, email, role) => {
+  const inviteUser = useCallback(async (budgetId, email, role) => {
     await collaborationAPI.inviteUser(budgetId, { email, role });
     // After sending, we can optionally refetch the list of collaborators
     // if we want to show "pending" invites in the UI.
     await fetchCollaborators(budgetId);
-  };
+  }, [fetchCollaborators]);
 
-  const removeCollaborator = async (budgetId, userId) => {
+  const removeCollaborator = useCallback(async (budgetId, userId) => {
     await collaborationAPI.removeUser(budgetId, userId);
     await fetchCollaborators(budgetId);
-  };
+  }, [fetchCollaborators]);
 
-  const acceptInvitation = async (token) => {
+  const acceptInvitation = useCallback(async (token) => {
     await collaborationAPI.acceptInvitation(token);
     // After accepting, refetch the budgets list to include the newly shared budget.
     await fetchBudgets();
-  };
+  }, [fetchBudgets]);
 
-  const value = { 
+  const value = React.useMemo(() => ({ 
     budgets, transactions, categories, collaborators, loading, error,
     fetchBudgets, addBudget, updateBudget, deleteBudget,
     fetchTransactions, addTransaction, updateTransaction, deleteTransaction,
     fetchCollaborators, inviteUser, removeCollaborator, acceptInvitation
-  };
+  }), [
+    budgets, transactions, categories, collaborators, loading, error,
+    fetchBudgets, addBudget, updateBudget, deleteBudget,
+    fetchTransactions, addTransaction, updateTransaction, deleteTransaction,
+    fetchCollaborators, inviteUser, removeCollaborator, acceptInvitation
+  ]);
 
   return (
     <BudgetContext.Provider value={value}>
