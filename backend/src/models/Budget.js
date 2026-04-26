@@ -9,7 +9,7 @@ const Budget = {
       const newBudget = await tx.insert(budgets).values({
         user_id: userId,
         name,
-        amount,
+        amount: String(amount),
         category,
         is_recurring,
         description,

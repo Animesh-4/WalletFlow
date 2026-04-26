@@ -1,10 +1,8 @@
 // src/components/Budget/BudgetCard.js
 import React from 'react';
 import { FaShareAlt, FaSyncAlt, FaCrown, FaEye, FaPlus, FaPencilAlt } from 'react-icons/fa';
-import { useAuth } from '../../hooks/useAuth';
 
 const BudgetCard = ({ budget, onEdit, onDelete, onShare, onViewBudget, onAdjustBudget }) => {
-  const { user } = useAuth();
   const { name, is_recurring, role } = budget;
   
   const amount = Number(budget.amount) || 0;

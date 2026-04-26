@@ -1,6 +1,6 @@
 // src/pages/AcceptInvitationPage.js
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useBudgets } from '../hooks/useBudgets';
 import Button from '../components/Shared/Button';
 import { useAuth } from '../hooks/useAuth';

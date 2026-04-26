@@ -1,5 +1,5 @@
 // src/context/SocketContext.js
-import React, { createContext, useEffect, useState, useContext } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import { useAuth } from '../hooks/useAuth';
 
