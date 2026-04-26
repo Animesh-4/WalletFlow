@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useBudgets } from '../hooks/useBudgets';
 import { useAuth } from '../hooks/useAuth';
-import { FaShareAlt, FaWallet, FaUserLock, FaUsers } from 'react-icons/fa';
+import { FaShareAlt, FaUserLock, FaUsers } from 'react-icons/fa';
 import Modal from '../components/Shared/Modal';
 import CollaborationModal from '../components/Collaboration/CollaborationModal';
 import Loading from '../components/Shared/Loading';

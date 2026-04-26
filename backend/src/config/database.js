@@ -1,25 +1,29 @@
 // backend/src/config/database.js
-const { neon } = require('@neondatabase/serverless');
-const { drizzle } = require('drizzle-orm/neon-http');
+const { Pool, neonConfig } = require('@neondatabase/serverless');
+const { drizzle } = require('drizzle-orm/neon-serverless');
+const ws = require('ws');
 const schema = require('../db/schema');
 const config = require('./env');
 const logger = require('../utils/logger');
 
+// Required for neon-serverless to work in Node.js environments
+neonConfig.webSocketConstructor = ws;
+
 let db;
 
 try {
-  // Initialize the Neon HTTP client using validated DATABASE_URL from env config
+  // Initialize the Neon Pool using validated DATABASE_URL from env config
   if (!config.DATABASE_URL) {
     throw new Error('DATABASE_URL is not configured. Check your .env file.');
   }
   
-  const sql = neon(config.DATABASE_URL);
+  const pool = new Pool({ connectionString: config.DATABASE_URL });
 
-  // Wrap the SQL client with Drizzle
-  db = drizzle(sql, { schema });
+  // Wrap the Pool with Drizzle
+  db = drizzle(pool, { schema });
 
   if (config.isDevelopment) {
-    logger.info('Successfully initialized Neon DB with Drizzle ORM (Development)');
+    logger.info('Successfully initialized Neon DB with Drizzle ORM (WebSocket/Serverless)');
   } else {
     logger.info('Database connection established');
   }

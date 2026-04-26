@@ -6,7 +6,7 @@ import { FaWallet } from 'react-icons/fa';
 
 // The component now accepts the onViewBudget prop
 const BudgetList = ({ onEditBudget, onShareBudget, onViewBudget ,  onAdjustBudget}) => {
-  const { budgets, loading, error, fetchBudgets, deleteBudget, categories } = useBudgets();
+  const { budgets, loading, fetchBudgets, deleteBudget, categories } = useBudgets();
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('date_desc');
 

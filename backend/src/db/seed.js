@@ -1,12 +1,16 @@
 // backend/src/db/seed.js
-const { neon } = require('@neondatabase/serverless');
-const { drizzle } = require('drizzle-orm/neon-http');
+const { Pool, neonConfig } = require('@neondatabase/serverless');
+const { drizzle } = require('drizzle-orm/neon-serverless');
+const ws = require('ws');
 const { categories } = require('./schema');
 const config = require('../config/env');
 
+// Required for neon-serverless to work in Node.js environments
+neonConfig.webSocketConstructor = ws;
+
 // Initialize the database connection using validated config
-const sql = neon(config.DATABASE_URL);
-const db = drizzle(sql);
+const pool = new Pool({ connectionString: config.DATABASE_URL });
+const db = drizzle(pool);
 
 async function seed() {
   // Production safety check: prevent accidental seeding in production

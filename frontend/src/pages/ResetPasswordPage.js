@@ -1,13 +1,12 @@
 // src/pages/ResetPasswordPage.js
 import React, { useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import Button from '../components/Shared/Button';
 import { useAuth } from '../hooks/useAuth';
 import { FaKey, FaCheckCircle, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const ResetPasswordPage = () => {
   const { resetPassword } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   
   const [formData, setFormData] = useState({ password: '', confirmPassword: '' });
