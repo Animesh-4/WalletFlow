@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "db:push": "drizzle-kit push",
     "db:seed": "node src/db/seed.js",
-    "test": "jest"
+    "test": "jest --runInBand --testTimeout=30000"
   },
   "keywords": [
     "budget",

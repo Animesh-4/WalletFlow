@@ -1,6 +1,5 @@
 // backend/server.js
 // Load and validate environment variables first, before anything else
-require('dotenv').config();
 const config = require('./src/config/env');
 
 const app = require('./src/app');

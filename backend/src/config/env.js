@@ -8,6 +8,7 @@
  * Call this module early in server startup to validate the environment.
  */
 
+require('dotenv').config();
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Validation helper

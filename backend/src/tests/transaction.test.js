@@ -5,6 +5,7 @@ const app = require('../app');
 describe('Transaction Endpoints', () => {
   let token;
   let budgetId;
+  const uniqueEmail = `transaction-${Date.now()}@example.com`;
 
   beforeAll(async () => {
     // Register and log in a user
@@ -12,14 +13,14 @@ describe('Transaction Endpoints', () => {
       .post('/api/auth/register')
       .send({
         username: 'transactionuser',
-        email: 'transaction@example.com',
+        email: uniqueEmail,
         password: 'password123',
       });
 
     const loginRes = await request(app)
       .post('/api/auth/login')
       .send({
-        email: 'transaction@example.com',
+        email: uniqueEmail,
         password: 'password123',
       });
     token = loginRes.body.token;
@@ -43,6 +44,7 @@ describe('Transaction Endpoints', () => {
         budget_id: budgetId,
         type: 'expense',
         amount: 50.75,
+        category: 'Food',
         description: 'Dinner',
         date: new Date().toISOString(),
       });

@@ -3,12 +3,16 @@ const request = require('supertest');
 const app = require('../app'); // Assuming your express app is exported from app.js
 
 describe('Auth Endpoints', () => {
+  const uniqueEmail = `test-${Date.now()}@example.com`;
+  const existingEmail = `existing-${Date.now()}@example.com`;
+  const loginEmail = `login-${Date.now()}@example.com`;
+
   it('should register a new user', async () => {
     const res = await request(app)
       .post('/api/auth/register')
       .send({
         username: 'testuser',
-        email: 'test@example.com',
+        email: uniqueEmail,
         password: 'password123',
       });
     expect(res.statusCode).toEqual(201);
@@ -21,7 +25,7 @@ describe('Auth Endpoints', () => {
       .post('/api/auth/register')
       .send({
         username: 'testuser2',
-        email: 'test2@example.com',
+        email: existingEmail,
         password: 'password123',
       });
 
@@ -30,10 +34,10 @@ describe('Auth Endpoints', () => {
       .post('/api/auth/register')
       .send({
         username: 'anotheruser',
-        email: 'test2@example.com',
+        email: existingEmail,
         password: 'password456',
       });
-    expect(res.statusCode).toEqual(500); // Or whatever your error status code is
+    expect(res.statusCode).toEqual(409);
   });
 
   it('should log in an existing user', async () => {
@@ -42,7 +46,7 @@ describe('Auth Endpoints', () => {
       .post('/api/auth/register')
       .send({
         username: 'loginuser',
-        email: 'login@example.com',
+        email: loginEmail,
         password: 'password123',
       });
 
@@ -50,7 +54,7 @@ describe('Auth Endpoints', () => {
     const res = await request(app)
       .post('/api/auth/login')
       .send({
-        email: 'login@example.com',
+        email: loginEmail,
         password: 'password123',
       });
     expect(res.statusCode).toEqual(200);
@@ -61,7 +65,7 @@ describe('Auth Endpoints', () => {
     const res = await request(app)
       .post('/api/auth/login')
       .send({
-        email: 'login@example.com',
+        email: loginEmail,
         password: 'wrongpassword',
       });
     expect(res.statusCode).toEqual(401);

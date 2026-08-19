@@ -14,7 +14,8 @@ const Category = {
   },
 
   async findOrCreateByName(name) {
-    const existingCategory = await this.findByName(name);
+    const categoryName = (name || 'Other').trim();
+    const existingCategory = await this.findByName(categoryName);
     if (existingCategory) {
       return existingCategory;
     }
@@ -22,7 +23,7 @@ const Category = {
     // Drizzle allows us to use `.onConflictDoNothing()` or handle it manually.
     // Since we need the returned object, we'll insert and return.
     const result = await db.insert(categories)
-      .values({ name })
+      .values({ name: categoryName })
       .returning();
       
     return result[0];

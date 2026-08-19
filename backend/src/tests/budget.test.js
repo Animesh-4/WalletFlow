@@ -6,6 +6,7 @@ const jwtConfig = require('../config/jwt');
 
 describe('Budget Endpoints', () => {
   let token;
+  const uniqueEmail = `budget-${Date.now()}@example.com`;
 
   beforeAll(async () => {
     // Register and log in a user to get a token
@@ -13,14 +14,14 @@ describe('Budget Endpoints', () => {
       .post('/api/auth/register')
       .send({
         username: 'budgetuser',
-        email: 'budget@example.com',
+        email: uniqueEmail,
         password: 'password123',
       });
 
     const res = await request(app)
       .post('/api/auth/login')
       .send({
-        email: 'budget@example.com',
+        email: uniqueEmail,
         password: 'password123',
       });
     token = res.body.token;
